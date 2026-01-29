@@ -540,7 +540,6 @@ function renderGanttChart(posts) {
       e.dataTransfer.dropEffect = "move";
     });
     row.addEventListener("drop", (e) => {
-<<<<<<< HEAD
       e.preventDefault();
       const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
       const to = parseInt(row.dataset.ganttIndex, 10);
@@ -548,15 +547,6 @@ function renderGanttChart(posts) {
       const newPosts = reorderPostsByGanttIndices(posts, from, to);
       renderPosts(newPosts);
     });
-=======
-        e.preventDefault();
-        const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
-        const to = parseInt(row.dataset.ganttIndex, 10);
-        if (from === to) return;
-        const newPosts = reorderPostsByGanttIndices(posts, from, to);
-        renderPosts(newPosts);
-      });
->>>>>>> 82cd803580c644248a1f56f8b1af764979d36ce3
 
     body.appendChild(row);
   });
