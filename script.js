@@ -1,5 +1,44 @@
-// 간단한 로컬 스토리지 키
-const STORAGE_KEY = "board_posts_with_period";
+// ---------------- Firebase import & 초기화 ----------------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  query,
+  orderBy,
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
+
+// 👉 firebaseConfig는 Firebase 콘솔에서 가져온 값으로 교체하세요
+const firebaseConfig = {
+    apiKey: "AIzaSyBnvH3PKD-uWOCRLQG8jTxD8iVJf0UwbPY",
+    authDomain: "did-display.firebaseapp.com",
+    projectId: "did-display",
+    storageBucket: "did-display.firebasestorage.app",
+    messagingSenderId: "316039230196",
+    appId: "1:316039230196:web:13536611ab408672c724a1",
+    measurementId: "G-QJYFEVKZ2N"
+  };
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
+
+// Firestore 컬렉션 참조
+const postsCollection = collection(db, "posts");
+
+// ---------------------------------------------------------
+
 
 // 첨부파일 최대 크기 (2MB)
 const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
@@ -8,77 +47,42 @@ const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
 let listSort = { by: null, order: "asc" };
 
 /**
- * 저장된 게시물 목록 불러오기
+ * 저장된 게시물 목록 불러오기 (Cloud Firestore)
  */
-function loadPosts() {
+async function loadPosts() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    // createdAt 기준 최신순 정렬
+    const q = query(postsCollection, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+
+    const posts = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+
+    return posts;
   } catch (e) {
-    console.error("Failed to load posts from storage", e);
+    console.error("Failed to load posts from Firestore", e);
     return [];
   }
 }
 
 /**
- * 게시물 목록 저장하기
- * @param {Array} posts
+ * 파일을 Firebase Storage에 업로드하고 메타 정보 반환
  */
-function savePosts(posts) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
-  } catch (e) {
-    console.error("Failed to save posts to storage", e);
-  }
-}
+async function uploadAttachmentToStorage(file) {
+  const storagePath = `attachments/${Date.now()}-${file.name}`;
+  const fileRef = ref(storage, storagePath);
 
-/**
- * 게시 상태 계산 (예: 진행중, 예정, 종료)
- */
-function getPostStatus(startDate, endDate) {
-  if (!startDate || !endDate) return { code: "unknown", label: "기간 미설정" };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  await uploadBytes(fileRef, file);
+  const downloadURL = await getDownloadURL(fileRef);
 
-  const s = new Date(startDate);
-  const e = new Date(endDate);
-  s.setHours(0, 0, 0, 0);
-  e.setHours(0, 0, 0, 0);
-
-  if (today < s) {
-    return { code: "pending", label: "게시 예정" };
-  }
-  if (today > e) {
-    return { code: "expired", label: "게시 종료" };
-  }
-  return { code: "active", label: "게시 중" };
-}
-
-/**
- * 게시 기간 텍스트
- */
-function formatPeriod(startDate, endDate) {
-  if (!startDate || !endDate) return "기간 정보 없음";
-  return `${startDate} ~ ${endDate}`;
-}
-
-/**
- * 첨부파일을 base64로 읽기 (Promise)
- */
-function readFileAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      const base64 = dataUrl.split(",")[1] || "";
-      resolve({ fileName: file.name, mimeType: file.type || "application/octet-stream", dataBase64: base64 });
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+  return {
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    storagePath,
+    downloadURL,
+  };
 }
 
 /**
@@ -117,10 +121,11 @@ function createPostElement(post, index, onDelete) {
 
   const attCell = document.createElement("div");
   attCell.className = "post-attachment";
-  if (post.attachment && post.attachment.fileName) {
+  if (post.attachment && post.attachment.downloadURL) {
     const a = document.createElement("a");
-    a.href = "data:" + (post.attachment.mimeType || "") + ";base64," + (post.attachment.dataBase64 || "");
-    a.download = post.attachment.fileName;
+    a.href = post.attachment.downloadURL;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
     a.className = "btn-download";
     a.textContent = "다운로드";
     attCell.appendChild(a);
@@ -248,12 +253,31 @@ function renderPosts(posts) {
   listEl.appendChild(header);
 
   displayPosts.forEach((post, index) => {
-    const item = createPostElement(post, index, (idx) => {
-      const toRemove = displayPosts[idx];
-      const newPosts = posts.filter((p) => p !== toRemove);
-      savePosts(newPosts);
-      renderPosts(newPosts);
-      renderGanttChart(newPosts);
+    const item = createPostElement(post, index, async (idx) => {
+      const target = displayPosts[idx];
+      if (!target || !target.id) return;
+
+      if (!confirm("이 게시물을 삭제하시겠습니까?")) return;
+
+      try {
+        // Firestore 문서 삭제
+        await deleteDoc(doc(db, "posts", target.id));
+
+        // Storage 첨부파일 삭제 (있다면)
+        if (target.attachment && target.attachment.storagePath) {
+          try {
+            await deleteObject(ref(storage, target.attachment.storagePath));
+          } catch (e) {
+            console.warn("Failed to delete attachment from storage", e);
+          }
+        }
+
+        const newPosts = await loadPosts();
+        renderPosts(newPosts);
+      } catch (e) {
+        console.error("Failed to delete post", e);
+        alert("삭제 중 오류가 발생했습니다.");
+      }
     });
     item.draggable = true;
     item.dataset.index = String(index);
@@ -269,16 +293,15 @@ function renderPosts(posts) {
       e.dataTransfer.dropEffect = "move";
     });
     item.addEventListener("drop", (e) => {
-      e.preventDefault();
-      const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
-      const to = parseInt(item.dataset.index, 10);
-      if (from === to) return;
-      const reordered = reorderPostsByIndex(displayPosts, from, to);
-      savePosts(reordered);
-      listSort = { by: null, order: "asc" };
-      renderPosts(reordered);
-      renderGanttChart(reordered);
-    });
+        e.preventDefault();
+        const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        const to = parseInt(item.dataset.index, 10);
+        if (from === to) return;
+        const reordered = reorderPostsByIndex(displayPosts, from, to);
+        listSort = { by: null, order: "asc" };
+        renderPosts(reordered);
+        renderGanttChart(reordered);
+      });
     listEl.appendChild(item);
   });
 
@@ -440,14 +463,13 @@ function renderGanttChart(posts) {
       e.dataTransfer.dropEffect = "move";
     });
     row.addEventListener("drop", (e) => {
-      e.preventDefault();
-      const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
-      const to = parseInt(row.dataset.ganttIndex, 10);
-      if (from === to) return;
-      const newPosts = reorderPostsByGanttIndices(posts, from, to);
-      savePosts(newPosts);
-      renderPosts(newPosts);
-    });
+        e.preventDefault();
+        const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        const to = parseInt(row.dataset.ganttIndex, 10);
+        if (from === to) return;
+        const newPosts = reorderPostsByGanttIndices(posts, from, to);
+        renderPosts(newPosts);
+      });
 
     body.appendChild(row);
   });
@@ -466,7 +488,7 @@ function renderGanttChart(posts) {
 /**
  * 폼 초기화 및 이벤트 설정
  */
-function initApp() {
+async function initApp() {
   const form = document.getElementById("post-form");
   const clearAllBtn = document.getElementById("clear-all");
 
@@ -479,8 +501,8 @@ function initApp() {
   if (startInput && !startInput.value) startInput.value = todayStr;
   if (endInput && !endInput.value) endInput.value = todayStr;
 
-  // 기존 게시물 렌더링
-  let posts = loadPosts();
+  // 기존 게시물 렌더링 (Firestore에서 비동기 로드)
+  let posts = await loadPosts();
   renderPosts(posts);
 
   form.addEventListener("submit", async (event) => {
@@ -504,7 +526,7 @@ function initApp() {
       return;
     }
 
-    let attachment = null;
+    let attachmentMeta = null;
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
       if (file.size > MAX_ATTACHMENT_SIZE) {
@@ -512,45 +534,68 @@ function initApp() {
         return;
       }
       try {
-        attachment = await readFileAsBase64(file);
+        attachmentMeta = await uploadAttachmentToStorage(file);
       } catch (e) {
-        alert("첨부파일을 읽는 중 오류가 발생했습니다.");
+        console.error(e);
+        alert("첨부파일을 업로드하는 중 오류가 발생했습니다.");
         return;
       }
     }
 
-    const createdAt = new Date().toISOString().slice(0, 10);
+    try {
+      await addDoc(postsCollection, {
+        department,
+        personInCharge,
+        title,
+        startDate,
+        endDate,
+        createdAt: serverTimestamp(),
+        attachment: attachmentMeta,
+      });
 
-    const newPost = {
-      id: Date.now(),
-      department,
-      personInCharge,
-      title,
-      startDate,
-      endDate,
-      createdAt,
-      attachment: attachment || undefined,
-    };
+      posts = await loadPosts();
+      renderPosts(posts);
 
-    posts = [newPost, ...posts];
-    savePosts(posts);
-    renderPosts(posts);
-
-    form.querySelector("#title").value = "";
-    form.querySelector("#department").value = "";
-    form.querySelector("#personInCharge").value = "";
-    if (fileInput) fileInput.value = "";
+      form.querySelector("#title").value = "";
+      form.querySelector("#department").value = "";
+      form.querySelector("#personInCharge").value = "";
+      if (fileInput) fileInput.value = "";
+    } catch (e) {
+      console.error("Failed to add post to Firestore", e);
+      alert("게시물 저장 중 오류가 발생했습니다.");
+    }
   });
 
   if (clearAllBtn) {
-    clearAllBtn.addEventListener("click", () => {
+    clearAllBtn.addEventListener("click", async () => {
       if (!confirm("모든 게시물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
-      posts = [];
-      savePosts(posts);
-      renderPosts(posts);
-      renderGanttChart(posts);
+
+      try {
+        const currentPosts = await loadPosts();
+
+        for (const p of currentPosts) {
+          if (!p.id) continue;
+          await deleteDoc(doc(db, "posts", p.id));
+          if (p.attachment && p.attachment.storagePath) {
+            try {
+              await deleteObject(ref(storage, p.attachment.storagePath));
+            } catch (e) {
+              console.warn("Failed to delete attachment from storage", e);
+            }
+          }
+        }
+
+        const empty = [];
+        renderPosts(empty);
+        renderGanttChart(empty);
+      } catch (e) {
+        console.error("Failed to clear all posts", e);
+        alert("전체 삭제 중 오류가 발생했습니다.");
+      }
     });
   }
 }
 
-document.addEventListener("DOMContentLoaded", initApp);
+document.addEventListener("DOMContentLoaded", () => {
+  initApp().catch(console.error);
+});
