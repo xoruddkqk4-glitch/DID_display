@@ -93,7 +93,6 @@ async function sendEmailNotification(type, postData) {
   }
 }
 
-
 // 첨부파일 최대 크기 (2MB)
 const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
 
@@ -341,7 +340,6 @@ function renderPosts(posts) {
 
         // 이메일 알림 발송
         sendEmailNotification("delete", target).catch(console.error);
-
         // Storage 첨부파일 삭제 (있다면)
         if (target.attachment && target.attachment.storagePath) {
           try {
@@ -542,6 +540,7 @@ function renderGanttChart(posts) {
       e.dataTransfer.dropEffect = "move";
     });
     row.addEventListener("drop", (e) => {
+<<<<<<< HEAD
       e.preventDefault();
       const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
       const to = parseInt(row.dataset.ganttIndex, 10);
@@ -549,6 +548,15 @@ function renderGanttChart(posts) {
       const newPosts = reorderPostsByGanttIndices(posts, from, to);
       renderPosts(newPosts);
     });
+=======
+        e.preventDefault();
+        const from = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        const to = parseInt(row.dataset.ganttIndex, 10);
+        if (from === to) return;
+        const newPosts = reorderPostsByGanttIndices(posts, from, to);
+        renderPosts(newPosts);
+      });
+>>>>>>> 82cd803580c644248a1f56f8b1af764979d36ce3
 
     body.appendChild(row);
   });
@@ -582,7 +590,6 @@ async function initApp() {
 
   // 이메일 설정 로드
   await loadEmailConfig();
-
   // 기존 게시물 렌더링 (Firestore에서 비동기 로드)
   let posts = await loadPosts();
   renderPosts(posts);
@@ -637,7 +644,6 @@ async function initApp() {
 
       // 이메일 알림 발송 (비동기 처리, 에러 나도 게시물 등록은 성공으로 간주)
       sendEmailNotification("add", { department, personInCharge, title }).catch(console.error);
-
       posts = await loadPosts();
       renderPosts(posts);
 
