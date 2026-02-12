@@ -76,7 +76,7 @@ async function sendEmailNotification(type, postData) {
     department: postData.department || "-",
     title: postData.title || "-",
     person: postData.personInCharge || "-",
-    date: new Date().toLocaleString(),
+    date: new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }),
   };
 
   try {
@@ -98,6 +98,28 @@ const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
 
 // 게시 기간 목록 정렬 상태: { by: 'startDate'|'endDate'|null, order: 'asc'|'desc' }
 let listSort = { by: null, order: "asc" };
+
+/**
+ * 서울 시간대 기준 오늘 날짜 반환 (시/분/초는 00:00:00으로 설정)
+ */
+function getSeoulToday() {
+  const now = new Date();
+  // 서울 시간대로 변환 (UTC+9)
+  const seoulTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  seoulTime.setHours(0, 0, 0, 0);
+  return seoulTime;
+}
+
+/**
+ * 서울 시간대 기준 현재 날짜 문자열 반환 (YYYY-MM-DD)
+ */
+function getSeoulTodayString() {
+  const now = new Date();
+  // 서울 시간대로 변환하여 YYYY-MM-DD 형식으로 반환
+  return new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }))
+    .toISOString()
+    .slice(0, 10);
+}
 
 /**
  * 저장된 게시물 목록 불러오기 (Cloud Firestore)
@@ -143,8 +165,7 @@ async function uploadAttachmentToStorage(file) {
  */
 function getPostStatus(startDate, endDate) {
   if (!startDate || !endDate) return { code: "unknown", label: "기간 미설정" };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getSeoulToday();
 
   const s = new Date(startDate);
   const e = new Date(endDate);
@@ -428,8 +449,7 @@ function renderGanttChart(posts) {
   if (!range) return;
 
   const totalMs = range.max - range.min;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getSeoulToday();
   const rangeMinNorm = new Date(range.min);
   rangeMinNorm.setHours(0, 0, 0, 0);
   const rangeMaxNorm = new Date(range.max);
@@ -443,7 +463,7 @@ function renderGanttChart(posts) {
     todayPct = ((today - range.min) / totalMs) * 100;
   }
   todayPct = Math.max(0, Math.min(100, todayPct));
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = getSeoulTodayString();
   el.style.setProperty("--today-pct", String(todayPct));
 
   const header = document.createElement("div");
@@ -571,10 +591,10 @@ async function initApp() {
 
   if (!form) return;
 
-  // 오늘 날짜를 기본값으로 설정
+  // 서울 시간대 기준 오늘 날짜를 기본값으로 설정
   const startInput = document.getElementById("startDate");
   const endInput = document.getElementById("endDate");
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getSeoulTodayString();
   if (startInput && !startInput.value) startInput.value = todayStr;
   if (endInput && !endInput.value) endInput.value = todayStr;
 
