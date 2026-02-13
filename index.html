@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DID 게시 신청</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="app">
+    <header class="app-header">
+      <button type="button" class="btn-help" id="help-btn" title="사용법">사용법</button>
+      <h1>DID 게시물 신청</h1>
+      <p class="subtitle">특정 사용자가 설정한 게시 기간을 모든 사용자가 확인할 수 있어요.</p>
+    </header>
+
+    <main class="app-main">
+      <section class="card card--form-wide">
+        <h2>게시물 등록</h2>
+        <form id="post-form" class="post-form post-form--horizontal">
+          <div class="form-grid">
+            <div class="form-row">
+              <label for="department">부서</label>
+              <input type="text" id="department" name="department" placeholder="부서" required />
+            </div>
+            <div class="form-row">
+              <label for="personInCharge">담당자</label>
+              <input type="text" id="personInCharge" name="personInCharge" placeholder="담당자" required />
+            </div>
+            <div class="form-row">
+              <label for="title">제목</label>
+              <input type="text" id="title" name="title" placeholder="제목" required />
+            </div>
+            <div class="form-row">
+              <label for="startDate">게시 시작일</label>
+              <input type="date" id="startDate" name="startDate" required />
+            </div>
+            <div class="form-row">
+              <label for="endDate">게시 종료일</label>
+              <input type="date" id="endDate" name="endDate" required />
+            </div>
+            <div class="form-row form-row--file">
+              <label for="attachment">파일 첨부 (1개, 최대 10MB)</label>
+              <input type="file" id="attachment" name="attachment" accept="*" class="file-input" />
+            </div>
+            <div class="form-row form-row--submit">
+              <button type="submit" class="btn-primary">게시물 등록</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section class="card gantt-section">
+        <div class="card-header">
+          <h2>게시 기간 차트</h2>
+        </div>
+        <p class="helper-text">게시물별 게시 기간을 시각적으로 확인할 수 있습니다.</p>
+        <div id="gantt-chart" class="gantt-chart">
+          <!-- 간트 차트가 여기에 동적으로 렌더링됩니다. -->
+        </div>
+      </section>
+
+      <section class="card card--list-wide">
+        <div class="card-header">
+          <h2>게시 목록</h2>
+          <button id="clear-all" class="btn-secondary" type="button">전체 삭제</button>
+        </div>
+        <p class="helper-text">아래 목록은 이 브라우저에 저장된 게시물의 게시 기간입니다.</p>
+        <div id="post-list" class="post-list">
+          <!-- 게시물이 여기에 동적으로 렌더링됩니다. -->
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>사용 중 궁금한 점은 정보미디어부에 문의하세요.</span>
+    </footer>
+  </div>
+
+  <!-- 수정 모달 -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>게시물 수정</h2>
+        <button type="button" class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <form id="edit-form" class="edit-form">
+        <input type="hidden" id="edit-id" name="edit-id" />
+        <div class="form-row">
+          <label for="edit-department">부서</label>
+          <input type="text" id="edit-department" name="edit-department" placeholder="부서" required />
+        </div>
+        <div class="form-row">
+          <label for="edit-personInCharge">담당자</label>
+          <input type="text" id="edit-personInCharge" name="edit-personInCharge" placeholder="담당자" required />
+        </div>
+        <div class="form-row">
+          <label for="edit-title">제목</label>
+          <input type="text" id="edit-title" name="edit-title" placeholder="제목" required />
+        </div>
+        <div class="form-row">
+          <label for="edit-startDate">게시 시작일</label>
+          <input type="date" id="edit-startDate" name="edit-startDate" required />
+        </div>
+        <div class="form-row">
+          <label for="edit-endDate">게시 종료일</label>
+          <input type="date" id="edit-endDate" name="edit-endDate" required />
+        </div>
+        <div class="form-row">
+          <label for="edit-attachment">파일 첨부 (1개, 최대 10MB)</label>
+          <div class="file-section">
+            <div id="current-file-info" class="current-file-info"></div>
+            <input type="file" id="edit-attachment" name="edit-attachment" accept="*" class="file-input" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancel-edit">취소</button>
+          <button type="submit" class="btn-primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 사용법 모달 -->
+  <div id="help-modal" class="modal">
+    <div class="modal-content modal-content-large">
+      <div class="modal-header">
+        <h2>📖 사용법</h2>
+        <button type="button" class="modal-close" id="help-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="help-content">
+        <p>로딩 중...</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module" src="script.js"></script>
+</body>
+
+</html>
