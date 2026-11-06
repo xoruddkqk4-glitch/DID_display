@@ -1,8 +1,3 @@
 {
-    "notificationEmail": "2hjh0205@naver.com",
-    "emailjs": {
-        "serviceId": "service_ivx2jop",
-        "templateId": "template_mrpsu8g",
-        "publicKey": "5I7CRjhRn9pH7gGw2"
-    }
+    "googleChatWebhookUrl": "https://script.google.com/macros/s/AKfycbzeXU7N_fGJ56Jbta9eMHmwihPuf_kkStCO7TjeIN5uk47DNgIDfJYo_C7ck-HnGYp8/exec"
 }

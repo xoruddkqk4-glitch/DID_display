@@ -43,7 +43,7 @@ const postsCollection = collection(db, "posts");
 // ---------------------------------------------------------
 
 /**
- * 이메일 설정 로드 및 초기화
+ * 알림 설정 로드 및 초기화 (Google Chat Apps Script 웹앱)
  */
 let emailConfig = null;
 
@@ -53,23 +53,22 @@ async function loadEmailConfig() {
     if (!response.ok) throw new Error("Config load failed");
     emailConfig = await response.json();
 
-    if (emailConfig && emailConfig.emailjs && window.emailjs) {
-      emailjs.init(emailConfig.emailjs.publicKey);
-      console.log("EmailJS initialized");
+    if (emailConfig && emailConfig.googleChatWebhookUrl) {
+      console.log("Google Chat notification config initialized");
     }
   } catch (e) {
-    console.warn("이메일 설정을 불러오지 못했습니다.", e);
+    console.warn("알림 설정을 불러오지 못했습니다.", e);
   }
 }
 
 /**
- * 이메일 알림 발송 함수
+ * Google Chat 알림 발송 함수 (Apps Script 경유)
  * @param {string} type - 'add' | 'delete' | 'edit'
  * @param {object} postData - 게시물 데이터
  */
 async function sendEmailNotification(type, postData) {
-  if (!emailConfig || !emailConfig.notificationEmail || !window.emailjs) {
-    console.log("이메일 알림을 보낼 수 없는 상태입니다 (설정 누락 등).");
+  if (!emailConfig || !emailConfig.googleChatWebhookUrl) {
+    console.log("구글 채팅 알림을 보낼 수 없는 상태입니다 (설정 누락 등).");
     return;
   }
 
@@ -77,26 +76,29 @@ async function sendEmailNotification(type, postData) {
   if (type === "delete") actionTypeText = "삭제";
   else if (type === "edit") actionTypeText = "수정";
 
-  const templateParams = {
-    email: emailConfig.notificationEmail,
+  const payload = {
     action_type: actionTypeText,
     department: postData.department || "-",
     title: postData.title || "-",
     person: postData.personInCharge || "-",
+    startDate: postData.startDate || "-",
+    endDate: postData.endDate || "-",
     date: new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }),
   };
 
   try {
-    console.log(`Sending email to ${emailConfig.notificationEmail}...`, templateParams);
-    // 실제 발송: 서비스 ID, 템플릿 ID는 config에서 가져옴
-    await emailjs.send(
-      emailConfig.emailjs.serviceId,
-      emailConfig.emailjs.templateId,
-      templateParams
-    );
-    console.log("Email sent successfully!");
+    console.log("Sending Google Chat notification...", payload);
+    const response = await fetch(emailConfig.googleChatWebhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    console.log("Google Chat notification sent successfully!", result);
   } catch (e) {
-    console.error("Email sending failed", e);
+    console.error("Google Chat notification sending failed", e);
   }
 }
 
@@ -776,8 +778,8 @@ async function initApp() {
         attachment: attachmentMeta,
       });
 
-      // 이메일 알림 발송 (비동기 처리, 에러 나도 게시물 등록은 성공으로 간주)
-      sendEmailNotification("add", { department, personInCharge, title }).catch(console.error);
+      // 알림 발송 (비동기 처리, 에러 나도 게시물 등록은 성공으로 간주)
+      sendEmailNotification("add", { department, personInCharge, title, startDate, endDate }).catch(console.error);
       posts = await loadPosts();
       renderPosts(posts);
 
@@ -1031,8 +1033,8 @@ async function handleEditSubmit() {
     
     await updateDoc(postRef, updateData);
     
-    // 이메일 알림
-    sendEmailNotification("edit", { department, personInCharge, title }).catch(console.error);
+    // 알림 발송
+    sendEmailNotification("edit", { department, personInCharge, title, startDate, endDate }).catch(console.error);
     
     // 목록 새로고침
     const posts = await loadPosts();
