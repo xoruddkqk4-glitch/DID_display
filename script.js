@@ -45,15 +45,15 @@ const postsCollection = collection(db, "posts");
 /**
  * 알림 설정 로드 및 초기화 (Google Chat Apps Script 웹앱)
  */
-let emailConfig = null;
+let chatConfig = null;
 
-async function loadEmailConfig() {
+async function loadChatConfig() {
   try {
-    const response = await fetch("email_config.json");
+    const response = await fetch("googlechat_config.json");
     if (!response.ok) throw new Error("Config load failed");
-    emailConfig = await response.json();
+    chatConfig = await response.json();
 
-    if (emailConfig && emailConfig.googleChatWebhookUrl) {
+    if (chatConfig && chatConfig.googleChatWebhookUrl) {
       console.log("Google Chat notification config initialized");
     }
   } catch (e) {
@@ -66,8 +66,8 @@ async function loadEmailConfig() {
  * @param {string} type - 'add' | 'delete' | 'edit'
  * @param {object} postData - 게시물 데이터
  */
-async function sendEmailNotification(type, postData) {
-  if (!emailConfig || !emailConfig.googleChatWebhookUrl) {
+async function sendChatNotification(type, postData) {
+  if (!chatConfig || !chatConfig.googleChatWebhookUrl) {
     console.log("구글 채팅 알림을 보낼 수 없는 상태입니다 (설정 누락 등).");
     return;
   }
@@ -88,7 +88,7 @@ async function sendEmailNotification(type, postData) {
 
   try {
     console.log("Sending Google Chat notification...", payload);
-    const response = await fetch(emailConfig.googleChatWebhookUrl, {
+    const response = await fetch(chatConfig.googleChatWebhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
@@ -430,8 +430,8 @@ function renderPosts(posts) {
         // Firestore 문서 삭제
         await deleteDoc(doc(db, "posts", target.id));
 
-        // 이메일 알림 발송
-        sendEmailNotification("delete", target).catch(console.error);
+        // Google Chat 알림 발송
+        sendChatNotification("delete", target).catch(console.error);
         // Storage 첨부파일 삭제 (있다면)
         if (target.attachment && target.attachment.storagePath) {
           try {
@@ -708,8 +708,8 @@ async function initApp() {
   if (startInput && !startInput.value) startInput.value = todayStr;
   if (endInput && !endInput.value) endInput.value = todayStr;
 
-  // 이메일 설정 로드
-  await loadEmailConfig();
+  // Google Chat 알림 설정 로드
+  await loadChatConfig();
   // 기존 게시물 렌더링 (Firestore에서 비동기 로드)
   let posts = await loadPosts();
   renderPosts(posts);
@@ -779,7 +779,7 @@ async function initApp() {
       });
 
       // 알림 발송 (비동기 처리, 에러 나도 게시물 등록은 성공으로 간주)
-      sendEmailNotification("add", { department, personInCharge, title, startDate, endDate }).catch(console.error);
+      sendChatNotification("add", { department, personInCharge, title, startDate, endDate }).catch(console.error);
       posts = await loadPosts();
       renderPosts(posts);
 
@@ -1034,7 +1034,7 @@ async function handleEditSubmit() {
     await updateDoc(postRef, updateData);
     
     // 알림 발송
-    sendEmailNotification("edit", { department, personInCharge, title, startDate, endDate }).catch(console.error);
+    sendChatNotification("edit", { department, personInCharge, title, startDate, endDate }).catch(console.error);
     
     // 목록 새로고침
     const posts = await loadPosts();
