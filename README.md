@@ -53,7 +53,7 @@
   - 새로운 파일로 교체 가능
   - 파일 추가 (기존에 없던 경우)
 - **저장 중 표시:** 저장 버튼이 "저장 중..."으로 변경되어 진행 상황 표시
-- **이메일 알림:** 게시물 수정 시 관리자에게 이메일 발송
+- **Google Chat 알림:** 게시물 수정 시 관리자에게 Google Chat 메시지 발송
 
 ### 5. 파일 관리
 
@@ -68,7 +68,7 @@
 
 - **개별 삭제:** 각 게시물마다 휴지통 아이콘 버튼 제공
 - **전체 삭제:** "전체 삭제" 버튼으로 모든 게시물 일괄 삭제
-- **이메일 알림:** 게시물 삭제 시에도 관리자에게 이메일 발송
+- **Google Chat 알림:** 게시물 삭제 시에도 관리자에게 Google Chat 메시지 발송
 - **확인 메시지:** 삭제 전 확인 팝업 표시
 
 ---
@@ -80,7 +80,7 @@
 - ✅ 실시간 게시 상태 표시 (게시 중/예정/종료)
 - ✅ 드래그 앤 드롭으로 직관적인 순서 변경
 - ✅ 모바일에서도 사용 가능한 반응형 디자인
-- ✅ 자동 이메일 알림으로 변경사항 추적
+- ✅ 자동 Google Chat 알림으로 변경사항 추적
 - ✅ 게시물 수정 기능으로 유연한 관리
 - ✅ 저장 중 표시로 명확한 피드백
 - ✅ 모든 파일 타입 강제 다운로드 지원
@@ -96,3 +96,14 @@
 ## 📄 라이선스
 
 이 프로젝트는 조직 내부용으로 개발되었습니다.
+
+---
+
+## [2026-11-06 14:05] 업데이트 이력 (Commit ID: 3722c1f)
+- **수정 내용**:
+  - 기존 EmailJS 기반 이메일 알림을 Google Apps Script 웹앱 경유 **Google Chat 웹훅 알림** 방식으로 전환
+  - `email_config.json`: EmailJS 설정을 제거하고 `googleChatWebhookUrl` 설정으로 변경
+  - `index.html`: 불필요해진 EmailJS CDN 스크립트 태그 제거
+  - `script.js`: `loadEmailConfig()` 및 `sendEmailNotification()`을 Google Apps Script POST 호출(`text/plain;charset=utf-8`을 통한 CORS Preflight 방지)로 수정하고, 게시물 등록/수정 알림 시에도 게시 시작일(`startDate`)과 종료일(`endDate`) 정보를 함께 전송하도록 개선
+- **검증 결과**:
+  - `node --check script.js` 및 `email_config.json` JSON 파싱 구문 검사 통과 (`JSON & JS syntax OK`)
