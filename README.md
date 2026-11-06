@@ -107,3 +107,10 @@
   - `script.js`: `loadEmailConfig()` 및 `sendEmailNotification()`을 Google Apps Script POST 호출(`text/plain;charset=utf-8`을 통한 CORS Preflight 방지)로 수정하고, 게시물 등록/수정 알림 시에도 게시 시작일(`startDate`)과 종료일(`endDate`) 정보를 함께 전송하도록 개선
 - **검증 결과**:
   - `node --check script.js` 및 `email_config.json` JSON 파싱 구문 검사 통과 (`JSON & JS syntax OK`)
+
+## [2026-11-06 14:10] 업데이트 이력 (Commit ID: 333c3d5)
+- **수정 내용**:
+  - 알림 설정 파일명을 `email_config.json`에서 **`googlechat_config.json`**으로 변경
+  - `script.js`: 설정 로드 경로를 `fetch("googlechat_config.json")`으로 수정하고, 관련 변수 및 함수명을 Google Chat 역할에 맞게 변경(`emailConfig` → `chatConfig`, `loadEmailConfig` → `loadChatConfig`, `sendEmailNotification` → `sendChatNotification`)
+- **검증 결과**:
+  - `node --check script.js` 및 `googlechat_config.json` JSON 파싱 구문 검사 통과 (`googlechat_config.json & script.js syntax OK`)
