@@ -63,7 +63,7 @@ async function loadChatConfig() {
 
 /**
  * Google Chat 알림 발송 함수 (Apps Script 경유)
- * @param {string} type - 'add' | 'delete' | 'edit'
+ * @param {string} type - 'add' | 'delete' | 'edit' | 'clear_all'
  * @param {object} postData - 게시물 데이터
  */
 async function sendChatNotification(type, postData) {
@@ -75,6 +75,7 @@ async function sendChatNotification(type, postData) {
   let actionTypeText = "등록";
   if (type === "delete") actionTypeText = "삭제";
   else if (type === "edit") actionTypeText = "수정";
+  else if (type === "clear_all") actionTypeText = "전체 삭제";
 
   const payload = {
     action_type: actionTypeText,
@@ -808,10 +809,12 @@ async function initApp() {
 
       try {
         const currentPosts = await loadPosts();
+        let deletedCount = 0;
 
         for (const p of currentPosts) {
           if (!p.id) continue;
           await deleteDoc(doc(db, "posts", p.id));
+          deletedCount += 1;
           if (p.attachment && p.attachment.storagePath) {
             try {
               await deleteObject(ref(storage, p.attachment.storagePath));
@@ -819,6 +822,15 @@ async function initApp() {
               console.warn("Failed to delete attachment from storage", e);
             }
           }
+        }
+
+        // 전체 삭제 완료 후 1건의 요약 안내 메시지 발송
+        if (deletedCount > 0) {
+          sendChatNotification("clear_all", {
+            department: "전체",
+            personInCharge: "-",
+            title: `총 ${deletedCount}건의 게시물 일괄 삭제`,
+          }).catch(console.error);
         }
 
         const empty = [];
