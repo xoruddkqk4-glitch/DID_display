@@ -68,7 +68,7 @@
 
 - **개별 삭제:** 각 게시물마다 휴지통 아이콘 버튼 제공
 - **전체 삭제:** "전체 삭제" 버튼으로 모든 게시물 일괄 삭제
-- **Google Chat 알림:** 게시물 삭제 시에도 관리자에게 Google Chat 메시지 발송
+- **Google Chat 알림:** 개별 삭제 및 전체 삭제(1건의 일괄 삭제 요약 메시지) 시 관리자에게 Google Chat 메시지 발송
 - **확인 메시지:** 삭제 전 확인 팝업 표시
 
 ---
@@ -114,3 +114,9 @@
   - `script.js`: 설정 로드 경로를 `fetch("googlechat_config.json")`으로 수정하고, 관련 변수 및 함수명을 Google Chat 역할에 맞게 변경(`emailConfig` → `chatConfig`, `loadEmailConfig` → `loadChatConfig`, `sendEmailNotification` → `sendChatNotification`)
 - **검증 결과**:
   - `node --check script.js` 및 `googlechat_config.json` JSON 파싱 구문 검사 통과 (`googlechat_config.json & script.js syntax OK`)
+
+## [2026-11-06 14:22] 업데이트 이력 (Commit ID: 426882a)
+- **수정 내용**:
+  - `script.js`: '전체 삭제'(`#clear-all`) 실행 완료 시 삭제된 총 게시물 건수를 집계하여 Google Chat으로 **1건의 전체 삭제 요약 안내 메시지**(`type: "clear_all"`, `action_type: "전체 삭제"`)를 발송하도록 기능 추가
+- **검증 결과**:
+  - 터미널 정적 구문 검사(`node --check script.js`) 정상 통과 (`Syntax OK`)
